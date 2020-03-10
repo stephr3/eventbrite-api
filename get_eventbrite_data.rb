@@ -27,6 +27,7 @@ end
 
 def get_event_list
 	event_list = []
+	start_time = Time.now
 	response_body = get_response_body(get_event_list_uri)
   	
   	raise StandardError.new("There are no events for this search") if !response_body
@@ -41,7 +42,6 @@ def get_event_list
 		puts response_body["pagination"]["page_number"].to_s + " of " +  response_body["pagination"]["page_count"].to_s + " pages retrieved"
 		event_list.push(response_body["events"])
 	end
-
 	event_list 
 end
 
@@ -86,18 +86,13 @@ def bearer_token
 end
 
 def el_or_aa
-	return "English Lounge" if is_EL? 
+	return "English Lounge" if input == "EL"
 	"Academic Advising"
 end
 
 def get_event_list_uri
-	# "https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?name_filter=PEP"
-	"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?name_filter=#{el_or_aa} with Stephanie Roth"
-end
-
-
-def is_EL?
-	input == "EL"
+	"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=PEP"
+	# "https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{el_or_aa} with Stephanie Roth"
 end
 
 get_eventbrite_data
