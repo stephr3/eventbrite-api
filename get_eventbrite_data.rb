@@ -15,6 +15,7 @@ def get_eventbrite_data
 
 	# # Grab event "id" with event "name.text", and "start.local" (as date, not date time) and put in an array
 	event_ids = get_event_ids(event_list)
+	puts event_ids.length
 	puts event_ids
 
 	# attendees = get_attendees(event_ids)
@@ -30,16 +31,32 @@ def get_event_list
 	http.use_ssl = true
 	request = Net::HTTP::Get.new(uri.request_uri)
   	request["Authorization"] = "Bearer #{bearer_token}"
+  	event_list = []
 
 	response = http.request(request)
-	JSON.parse(response.body)["events"] if response.is_a?(Net::HTTPSuccess)
-	# Need to call again if more pages.. 
+	response_body = JSON.parse(response.body)
+	event_list.push(response_body["events"]) if response.is_a?(Net::HTTPSuccess)
+	puts response_body["pagination"]["object_count"]
+	
+	if response_body["pagination"]["has_more_items"]
+		continuation_uri = get_event_list_uri + "&continuation=" + response_body["pagination"]["continuation"]
+		uri=(URI.parse(continuation_uri))
+		request = Net::HTTP::Get.new(uri.request_uri)
+  		request["Authorization"] = "Bearer #{bearer_token}"
+		response = http.request(request)
+		response_body = JSON.parse(response.body)
+		event_list.push(response_body["events"]) if response.is_a?(Net::HTTPSuccess)
+	end
+
+	event_list 
 end
 
 def get_event_ids(event_list) 
 	ids_list = []
-	event_list.each do |event|
-		ids_list.push({"name": event["name"]["text"], "id": event["id"], "date": Date.parse(event["start"]["local"]).to_s})
+	event_list.each do |event_group|
+		event_group.each do |event|
+			ids_list.push({"name": event["name"]["text"], "id": event["id"], "date": Date.parse(event["start"]["local"]).to_s})
+		end
 	end
 	ids_list
 end
