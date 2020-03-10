@@ -26,26 +26,18 @@ def get_eventbrite_data
 end
 
 def get_event_list
-	uri = URI.parse(get_event_list_uri)
-	http = Net::HTTP.new(uri.host, uri.port)
-	http.use_ssl = true
-	request = Net::HTTP::Get.new(uri.request_uri)
-  	request["Authorization"] = "Bearer #{bearer_token}"
-  	event_list = []
-
-	response = http.request(request)
-	response_body = JSON.parse(response.body)
-	event_list.push(response_body["events"]) if response.is_a?(Net::HTTPSuccess)
+	event_list = []
+	response_body = get_response_body(get_event_list_uri)
+  	
+  	return "There are no events for this search" if !response_body
+	event_list.push(response_body["events"]) 
 	puts response_body["pagination"]["object_count"]
 	
 	if response_body["pagination"]["has_more_items"]
 		continuation_uri = get_event_list_uri + "&continuation=" + response_body["pagination"]["continuation"]
-		uri=(URI.parse(continuation_uri))
-		request = Net::HTTP::Get.new(uri.request_uri)
-  		request["Authorization"] = "Bearer #{bearer_token}"
-		response = http.request(request)
-		response_body = JSON.parse(response.body)
-		event_list.push(response_body["events"]) if response.is_a?(Net::HTTPSuccess)
+		response_body = get_response_body(continuation_uri)
+		return "There was an error retrieving all events for this search" if !response_body
+		event_list.push(response_body["events"])
 	end
 
 	event_list 
@@ -61,6 +53,15 @@ def get_event_ids(event_list)
 	ids_list
 end
 
+def get_response_body(uri_string)
+	uri = URI.parse(uri_string)
+	http = Net::HTTP.new(uri.host, uri.port)
+	http.use_ssl = true
+	request = Net::HTTP::Get.new(uri.request_uri)
+  	request["Authorization"] = "Bearer #{bearer_token}"
+  	response = http.request(request)
+	response.is_a?(Net::HTTPSuccess) ? JSON.parse(response.body) : nil
+end
 
 def correct_input
 	input && input === "EL" || input === "AA"
