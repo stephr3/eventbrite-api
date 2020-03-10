@@ -15,7 +15,7 @@ def get_eventbrite_data
 
 	# # Grab event "id" with event "name.text", and "start.local" (as date, not date time) and put in an array
 	event_ids = get_event_ids(event_list)
-	puts event_ids.length
+	puts "Events Retrieved: " + event_ids.length.to_s
 	puts event_ids
 
 	# attendees = get_attendees(event_ids)
@@ -29,14 +29,16 @@ def get_event_list
 	event_list = []
 	response_body = get_response_body(get_event_list_uri)
   	
-  	return "There are no events for this search" if !response_body
+  	raise StandardError.new("There are no events for this search") if !response_body
 	event_list.push(response_body["events"]) 
-	puts response_body["pagination"]["object_count"]
+	puts "Total Events: " + response_body["pagination"]["object_count"].to_s
+	output_pages_complete(response_body["pagination"])
 	
-	if response_body["pagination"]["has_more_items"]
+	while response_body["pagination"]["has_more_items"]
 		continuation_uri = get_event_list_uri + "&continuation=" + response_body["pagination"]["continuation"]
 		response_body = get_response_body(continuation_uri)
-		return "There was an error retrieving all events for this search" if !response_body
+		raise StandardError.new("There was an error retrieving all events for this search") if !response_body
+		puts response_body["pagination"]["page_number"].to_s + " of " +  response_body["pagination"]["page_count"].to_s + " pages retrieved"
 		event_list.push(response_body["events"])
 	end
 
@@ -63,6 +65,10 @@ def get_response_body(uri_string)
 	response.is_a?(Net::HTTPSuccess) ? JSON.parse(response.body) : nil
 end
 
+def output_pages_complete(pagination_response)
+		puts pagination_response["page_number"].to_s + " of " +  pagination_response["page_count"].to_s + " pages retrieved"
+end
+
 def correct_input
 	input && input === "EL" || input === "AA"
 end
@@ -85,6 +91,7 @@ def el_or_aa
 end
 
 def get_event_list_uri
+	# "https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?name_filter=PEP"
 	"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?name_filter=#{el_or_aa} with Stephanie Roth"
 end
 
