@@ -6,8 +6,13 @@ require 'csv'
 
 def get_eventbrite_data
 	
-	if !correct_input
+	if !correct_event_type_input
 		puts "Please input EL, AA, PEP, or PAW. Example: $ruby get_eventbrite_data.rb EL"
+		return
+	end
+
+	if teacher_name_input && !correct_teacher_name_input
+		puts "Please input the teacher's first and last name with an underscore between. Example: $ruby get_eventbrite_data.rb EL Jack_Johnson"
 		return
 	end
 
@@ -73,7 +78,7 @@ end
 
 def get_formatted_attendees(event, attendees)
 	attendees_list = []
-	
+
 	attendees.each do |attendee|
 		next if !attendee["checked_in"]
 		attendees_list.push(create_attendee(event, attendee))
@@ -125,7 +130,7 @@ def academic_advising_paw_data(event, attendee)
 end
 
 def open_csv(attendees)
-	file_name = "#{input}_#{Date.today.strftime("%m_%d_%Y")}.csv"
+	file_name = "#{event_type_input}_#{Date.today.strftime("%m_%d_%Y")}.csv"
 	CSV.open(file_name, "wb") do |csv|
   		csv << attendees.first.keys # adds the attributes name on the first line
 	  	attendees.each do |hash|
@@ -149,12 +154,20 @@ def output_pages_complete(pagination_response)
 		puts pagination_response["page_number"].to_s + " of " +  pagination_response["page_count"].to_s + " pages retrieved"
 end
 
-def correct_input
-	input && ["EL", "AA", "PEP", "PAW"].include?(input)
+def correct_event_type_input
+	event_type_input && ["EL", "AA", "PEP", "PAW"].include?(event_type_input)
 end
 
-def input
+def correct_teacher_name_input
+	teacher_name_input.include?("_")
+end
+
+def event_type_input
 	ARGV[0]
+end
+
+def teacher_name_input
+	ARGV[1]
 end
 
 def organization_id
@@ -166,23 +179,30 @@ def bearer_token
 end
 
 def event_type
-	case input
+	case event_type_input
 	when "EL"
 	  "English Lounge"
 	when "AA"
 	  "Academic Advising"
 	else
-	  input
+	  event_type_input
 	end
 end
 
+def teacher_name
+	teacher_name_input ? teacher_name_input.gsub("_", " ") : nil
+end
+
 def is_el
-	input == "EL" || input == "PEP"
+	event_type_input == "EL" || event_type_input == "PEP"
 end
 
 def get_event_list_uri
-	# "https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type}"
-	"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type} with Stephanie Roth"
+	if teacher_name
+		"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type} with #{teacher_name}"
+	else
+		"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type}"
+	end
 end
 
 def get_attendees_uri(event_id)
