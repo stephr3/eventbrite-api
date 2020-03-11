@@ -6,28 +6,29 @@ require 'date'
 def get_eventbrite_data
 	
 	if !correct_input
-		puts "Please input EL or AA. Example: $ruby get_eventbrite_data.rb EL"
+		puts "Please input EL, AA, PEP, or PAW. Example: $ruby get_eventbrite_data.rb EL"
 		return
 	end
 
-	# # Get and filter events to be either AA or EL
+	# Get and filter events to be AA, EL, PEP, or PAW
 	event_list = get_event_list
 
-	# # Grab event "id" with event "name.text", and "start.local" (as date, not date time) and put in an array
-	event_ids = get_event_ids(event_list)
-	puts "Events Retrieved: " + event_ids.length.to_s
-	puts event_ids
+	# Grab event "id" with event "name.text", and "start.local" (as date, not date time) and put in an array
+	formatted_events = get_formatted_events(event_list)
+	puts "Events Retrieved: " + formatted_events.length.to_s
+	puts formatted_events
 
-	# attendees = get_attendees(event_ids)
+	# attendees = get_attendees(formatted_events)
 
 	# csv = create_csv(attendees)
 
 	# open_csv(csv)
+
+	# make into executable file...
 end
 
 def get_event_list
 	event_list = []
-	start_time = Time.now
 	response_body = get_response_body(get_event_list_uri)
   	
   	raise StandardError.new("There are no events for this search") if !response_body
@@ -45,7 +46,7 @@ def get_event_list
 	event_list 
 end
 
-def get_event_ids(event_list) 
+def get_formatted_events(event_list) 
 	ids_list = []
 	event_list.each do |event_group|
 		event_group.each do |event|
@@ -54,6 +55,23 @@ def get_event_ids(event_list)
 	end
 	ids_list
 end
+
+# def get_attendees(formatted_events)
+# 	attendees_list = []
+# 	# formatted_events.each do |formatted_event|
+# 		response_body = get_response_body(get_attendees_uri(formatted_events[0][:id]))
+# 		formatted_response = get_formatted_attendees(formatted_events[0], response_body)
+# 		# attendees_list.push(formatted_response)
+# 	# end
+# 	# attendees_list
+# end
+
+# def get_formatted_attendees(event, attendees)
+# 	puts "Event:"
+# 	puts event
+# 	puts "Attendees:"
+# 	puts attendees
+# end
 
 def get_response_body(uri_string)
 	uri = URI.parse(uri_string)
@@ -70,7 +88,7 @@ def output_pages_complete(pagination_response)
 end
 
 def correct_input
-	input && input === "EL" || input === "AA"
+	input && ["EL", "AA", "PEP", "PAW"].include?(input)
 end
 
 def input
@@ -85,14 +103,24 @@ def bearer_token
 	ENV["EVENTBRITE_BEARER_TOKEN"]
 end
 
-def el_or_aa
-	return "English Lounge" if input == "EL"
-	"Academic Advising"
+def event_type
+	case input
+	when "EL"
+	  "English Lounge"
+	when "AA"
+	  "Academic Advising"
+	else
+	  input
+	end
 end
 
 def get_event_list_uri
-	"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=PEP"
-	# "https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{el_or_aa} with Stephanie Roth"
+	# "https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type}"
+	"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type} with Stephanie Roth"
 end
+
+# def get_attendees_uri(event_id)
+# 	"https://www.eventbriteapi.com/v3/events/#{event_id}/attendees/"
+# end
 
 get_eventbrite_data
