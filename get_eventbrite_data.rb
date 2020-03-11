@@ -2,6 +2,7 @@
 require 'net/http'
 require 'json'
 require 'date'
+require 'csv'
 
 def get_eventbrite_data
 	
@@ -19,9 +20,7 @@ def get_eventbrite_data
 
 	attendees = get_attendees(formatted_events)
 
-	# csv = create_csv(attendees)
-
-	# open_csv(csv)
+	open_csv(attendees.flatten)
 
 	# make into executable file...
 end
@@ -35,29 +34,32 @@ def get_event_list
 	puts "Total Events: " + response_body["pagination"]["object_count"].to_s
 	output_pages_complete(response_body["pagination"])
 	
-	# while response_body["pagination"]["has_more_items"]
-	# 	continuation_uri = get_event_list_uri + "&continuation=" + response_body["pagination"]["continuation"]
-	# 	response_body = get_response_body(continuation_uri)
-	# 	raise StandardError.new("There was an error retrieving all events for this search") if !response_body
-	# 	puts response_body["pagination"]["page_number"].to_s + " of " +  response_body["pagination"]["page_count"].to_s + " pages retrieved"
-	# 	event_list.push(response_body["events"])
-	# end
+	while response_body["pagination"]["has_more_items"]
+		continuation_uri = get_event_list_uri + "&continuation=" + response_body["pagination"]["continuation"]
+		response_body = get_response_body(continuation_uri)
+		raise StandardError.new("There was an error retrieving all events for this search") if !response_body
+		puts response_body["pagination"]["page_number"].to_s + " of " +  response_body["pagination"]["page_count"].to_s + " pages retrieved"
+		event_list.push(response_body["events"])
+	end
+
 	event_list 
 end
 
 def get_formatted_events(event_list) 
 	ids_list = []
+
 	event_list.each do |event_group|
 		event_group.each do |event|
 			ids_list.push({"name": event["name"]["text"], "id": event["id"], "date": Date.parse(event["start"]["local"]).to_s})
 		end
 	end
+
 	ids_list
 end
 
 def get_attendees(formatted_events)
 	attendees_list = []
-	formatted_events = [formatted_events[0], formatted_events[1]] # remove later
+
 	formatted_events.each_with_index do |formatted_event, i|
 		response_body = get_response_body(get_attendees_uri(formatted_event[:id]))
 		raise StandardError.new("There was an error retrieving attendees for this search") if !response_body
@@ -65,16 +67,18 @@ def get_attendees(formatted_events)
 		attendees_list.push(formatted_response)
 		puts (i + 1).to_s + " of " + formatted_events.length.to_s + " events complete" if (i + 1) % 5 == 0
 	end
-	puts attendees_list
+
+	attendees_list
 end
 
 def get_formatted_attendees(event, attendees)
 	attendees_list = []
-	attendees = [attendees[0], attendees[1]] # remove later
+	
 	attendees.each do |attendee|
 		next if !attendee["checked_in"]
 		attendees_list.push(create_attendee(event, attendee))
 	end
+
 	attendees_list
 end
 
@@ -118,6 +122,17 @@ def academic_advising_paw_data(event, attendee)
 		"Who teaches this class?": attendee["answers"][10]["answer"],
 		"What assignment, project, or topic are you bringing to Academic Advising?": attendee["answers"][3]["answer"]
 	}	
+end
+
+def open_csv(attendees)
+	file_name = "#{input}_#{Date.today.strftime("%m_%d_%Y")}.csv"
+	CSV.open(file_name, "wb") do |csv|
+  		csv << attendees.first.keys # adds the attributes name on the first line
+	  	attendees.each do |hash|
+	    	csv << hash.values
+	  	end
+	end
+	puts "Created " + file_name
 end
 
 def get_response_body(uri_string)
