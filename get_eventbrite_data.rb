@@ -16,9 +16,8 @@ def get_eventbrite_data
 	# Grab event "id" with event "name.text", and "start.local" (as date, not date time) and put in an array
 	formatted_events = get_formatted_events(event_list)
 	puts "Events Retrieved: " + formatted_events.length.to_s
-	puts formatted_events
 
-	# attendees = get_attendees(formatted_events)
+	attendees = get_attendees(formatted_events)
 
 	# csv = create_csv(attendees)
 
@@ -56,22 +55,27 @@ def get_formatted_events(event_list)
 	ids_list
 end
 
-# def get_attendees(formatted_events)
-# 	attendees_list = []
-# 	# formatted_events.each do |formatted_event|
-# 		response_body = get_response_body(get_attendees_uri(formatted_events[0][:id]))
-# 		formatted_response = get_formatted_attendees(formatted_events[0], response_body)
-# 		# attendees_list.push(formatted_response)
-# 	# end
-# 	# attendees_list
-# end
+def get_attendees(formatted_events)
+	attendees_list = []
+	formatted_events.each do |formatted_event|
+		response_body = get_response_body(get_attendees_uri(formatted_event[:id]))
+		raise StandardError.new("There was an error retrieving attendees for this search") if !response_body
+		formatted_response = get_formatted_attendees(formatted_event, response_body["attendees"])
+		# attendees_list.push(formatted_response)
+	end
+	# attendees_list
+end
 
-# def get_formatted_attendees(event, attendees)
-# 	puts "Event:"
-# 	puts event
-# 	puts "Attendees:"
-# 	puts attendees
-# end
+def get_formatted_attendees(event, attendees)
+	attendees_list = []
+	puts "Original Number of Attendees: " + attendees.length.to_s
+	attendees.each do |attendee|
+		next if !attendee["checked_in"]
+		attendees_list.push({"name": attendee["profile"]["name"], "checked_in": attendee["checked_in"]})
+	end
+	puts "New number of attendees: " + attendees_list.length.to_s
+	puts attendees_list
+end
 
 def get_response_body(uri_string)
 	uri = URI.parse(uri_string)
@@ -119,8 +123,8 @@ def get_event_list_uri
 	"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type} with Stephanie Roth"
 end
 
-# def get_attendees_uri(event_id)
-# 	"https://www.eventbriteapi.com/v3/events/#{event_id}/attendees/"
-# end
+def get_attendees_uri(event_id)
+	"https://www.eventbriteapi.com/v3/events/#{event_id}/attendees/"
+end
 
 get_eventbrite_data
