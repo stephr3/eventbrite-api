@@ -39,6 +39,16 @@ MASTER_WORKSHOP_IDS =
 		"English_Lounge_16:30": "99795334532"
 	}
 
+# How many times each day occurs in the semester, *including* holidays
+FREQ_COUNTS = 
+	{
+		Monday: "15",
+		Tuesday: "15",
+		Wednesday: "15",
+		Thursday: "16",
+		Friday: "16"
+	}
+
 ####################################################################################
 
 JST_TO_UTC = 
@@ -54,16 +64,6 @@ JST_TO_UTC =
 		"14:40": "05:40",
 		"16:20": "07:20",
 		"18:00": "09:00"		
-	}
-
-START_TO_END_TIMES = 
-	{
-		"10:25": "11:10",
-		"11:35": "12:20",
-		"10:50": "12:20",
-		"13:10": "14:40",
-		"14:50": "16:20",
-		"16:30": "18:00"
 	}	
 
 ####################################################################################
@@ -73,14 +73,14 @@ def create_workshops
 	# open csv and store as array
 	# note: columns in CSV should not be duplicate. EL1 / EL2 / EL3 is okay
 	plaza_schedule = get_plaza_schedule
-	plaza_schedule = [plaza_schedule[0]]  # remove later
+	plaza_schedule = [plaza_schedule[1]]  # remove later
 
 	# create events
 	plaza_schedule.each do |teacher_schedule|
 		# store teacher and create array of events
 		current_teacher = teacher_schedule["Name"]
 		teacher_events = get_teacher_events(teacher_schedule)
-		teacher_events = [teacher_events[0]]  # remove later
+		teacher_events = [teacher_events[1]]  # remove later
 		puts "**************************************************************"
 		puts "Creating events for #{current_teacher}..."
 
@@ -98,6 +98,8 @@ def create_workshops
 			update_event_details(copied_event, current_teacher)
 
 			# schedule series using day, time, and parent event id (figure out start date from day)
+			schedule_series(event_id, event[:start_time], event[:start_date], event[:day])
+
 			# get ticket class ids for parent event. Update sales_end_relative to end_time / offset 60
 			# delete holiday events from series events
 			# publish event
@@ -164,8 +166,36 @@ def update_event_details(event, teacher_name)
 	body = get_event_update_body(event).to_json
 	response_body = get_response_body(url, "post", body)
 	raise StandardError.new("There was an error updating the event details") if !response_body
-	puts "UPDATE RESPONSE BODY"
-	puts response_body
+end
+
+def schedule_series(id, start_time, start_date, day)
+	url = "https://www.eventbriteapi.com/v3/events/#{id}/schedules/"
+	occurrence_duration = get_occurrence_duration(start_time)
+	recurrence_rule = get_recurrence_rule(start_date, day)
+	body = get_schedule_series_body(occurrence_duration, recurrence_rule).to_json
+	response_body = get_response_body(url, "post", body)
+	raise StandardError.new("There was an error scheduling the event series") if !response_body
+	puts "SCHEDULE EVENT SERIES"
+	puts response_body	
+end
+
+def get_occurrence_duration(time)
+	["10:25", "11:35"].include?(time) ? 2700 : 5400
+end
+
+def get_recurrence_rule(date, day)
+	count = FREQ_COUNTS[day.to_sym]
+	formatted_date = date.gsub("-","").gsub(":","")
+	"DTSTART:#{formatted_date}\nRRULE:FREQ=WEEKLY;COUNT=#{count}"
+end
+
+def get_schedule_series_body(occurrence_duration, recurrence_rule)
+	{
+		"schedule": {
+			"occurrence_duration": occurrence_duration,
+			"recurrence_rule": recurrence_rule
+		}
+	}
 end
 
 def get_response_body(uri_string, type, body=nil)
