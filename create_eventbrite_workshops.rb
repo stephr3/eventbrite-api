@@ -81,9 +81,8 @@ def create_workshops
 		current_teacher = teacher_schedule["Name"]
 		teacher_events = get_teacher_events(teacher_schedule)
 		teacher_events = [teacher_events[0]]  # remove later
-		puts teacher_events
-		# puts "//////////////"
-		# puts current_teacher
+		puts "**************************************************************"
+		puts "Creating events for #{current_teacher}"
 
 		teacher_events.each do |event|
 			# find appropriate master event
@@ -91,6 +90,8 @@ def create_workshops
 
 			# copy master event / store event id
 			current_parent_event_id = copy_event(master_event_id, current_teacher, event)
+			puts "Created event for #{event[:type].gsub("_", " ")} with #{current_teacher} #{event[:day]} at #{event[:start_time]}"
+			puts "Event ID: #{current_parent_event_id}"
 
 			# update details of new copy
 			# schedule series using day, time, and parent event id (figure out start date from day)
@@ -101,6 +102,7 @@ def create_workshops
 end
 
 def get_plaza_schedule
+	puts "**************************************************************"
 	puts "Creating Workshops from #{CSV_FILE_NAME}"
 	schedule_array = CSV.open(CSV_FILE_NAME, headers: :first_row).map(&:to_h)
 	schedule_array.each do |teacher_schedule| 
@@ -128,10 +130,10 @@ def formatted_event_hash(event_type, value)
 	formatted_event_type = event_type == "EL" ? "English_Lounge" : "Academic_Advising"
 	start_time = times_array[0]
 	end_time = times_array[1] 
-	start_date = get_start_date(day, start_time)
-	end_date = get_end_date(day, end_time)
+	start_date = get_iso_datetime(day, start_time)
+	end_date = get_iso_datetime(day, end_time)
 
-	{type: formatted_event_type, start_time: start_time, start_date: start_date, end_date: end_date}
+	{type: formatted_event_type, day: day, start_time: start_time, start_date: start_date, end_date: end_date}
 end
 
 def copy_event(master_event_id, current_teacher, event)
@@ -139,21 +141,15 @@ def copy_event(master_event_id, current_teacher, event)
 	teacher_name = current_teacher.gsub(" ", "%20")
 	event_name = "#{event_type}%20with%20#{teacher_name}"
 	url = "https://www.eventbriteapi.com/v3/events/#{master_event_id}/copy/?name=#{event_name}&start_date=#{event[:start_date]}&end_date=#{event[:end_date]}&timezone=Asia/Tokyo"
-	puts url
+	123
 	# call url with HTTP::NET
 	# return event id
 end
 
-def get_start_date(start_day, start_time)
-	date = START_DATES[start_day.to_sym]
-	utc_time = JST_TO_UTC[start_time.to_sym]
-	"#{date}T#{utc_time}:00Z"
-end
-
-def get_end_date(start_day, end_time)
-	date = START_DATES[start_day.to_sym]
-	utc_time = JST_TO_UTC[end_time.to_sym]
-	"#{date}T#{utc_time}:00Z"
+def get_iso_datetime(day, time)
+	date = START_DATES[day.to_sym]
+	utc_time = JST_TO_UTC[time.to_sym]
+	"#{date}T#{utc_time}:00Z"	
 end
 
 create_workshops
