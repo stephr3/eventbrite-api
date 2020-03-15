@@ -82,7 +82,7 @@ def create_workshops
 		teacher_events = get_teacher_events(teacher_schedule)
 		teacher_events = [teacher_events[0]]  # remove later
 		puts "**************************************************************"
-		puts "Creating events for #{current_teacher}"
+		puts "Creating events for #{current_teacher}..."
 
 		teacher_events.each do |event|
 			# find appropriate master event
@@ -90,7 +90,7 @@ def create_workshops
 
 			# copy master event / store event id
 			current_parent_event_id = copy_event(master_event_id, current_teacher, event)
-			puts "Created event for #{event[:type].gsub("_", " ")} with #{current_teacher} #{event[:day]} at #{event[:start_time]}"
+			puts "Created event: #{event[:type].gsub("_", " ")} with #{current_teacher} #{event[:day]} at #{event[:start_time]}"
 			puts "Event ID: #{current_parent_event_id}"
 
 			# update details of new copy
@@ -141,9 +141,17 @@ def copy_event(master_event_id, current_teacher, event)
 	teacher_name = current_teacher.gsub(" ", "%20")
 	event_name = "#{event_type}%20with%20#{teacher_name}"
 	url = "https://www.eventbriteapi.com/v3/events/#{master_event_id}/copy/?name=#{event_name}&start_date=#{event[:start_date]}&end_date=#{event[:end_date]}&timezone=Asia/Tokyo"
-	123
-	# call url with HTTP::NET
-	# return event id
+	response_body = get_response_body(url, "post")
+	raise StandardError.new("There was an error copying the master event") if !response_body
+	response_body["id"]
+end
+
+def delete_event(event_id)
+	url = "https://www.eventbriteapi.com/v3/events/#{event_id}/"
+	puts url
+	response_body = get_response_body(url, "delete")
+	raise StandardError.new("There was an error deleting the event") if !response_body
+	puts "Deleted Event with ID #{event_id}"
 end
 
 def get_iso_datetime(day, time)
@@ -152,7 +160,22 @@ def get_iso_datetime(day, time)
 	"#{date}T#{utc_time}:00Z"	
 end
 
-create_workshops
+def get_response_body(uri_string, type)
+	uri = URI.parse(uri_string)
+	http = Net::HTTP.new(uri.host, uri.port)
+	http.use_ssl = true
+	request = type == "delete" ? Net::HTTP::Delete.new(uri.request_uri) : Net::HTTP::Post.new(uri.request_uri)
+  	request["Authorization"] = "Bearer #{bearer_token}"
+  	response = http.request(request)
+	response.is_a?(Net::HTTPSuccess) ? JSON.parse(response.body) : nil
+end
+
+def bearer_token
+	ENV["EVENTBRITE_BEARER_TOKEN"]
+end
+
+# create_workshops
+delete_event(ARGV[0])
 
 
 
