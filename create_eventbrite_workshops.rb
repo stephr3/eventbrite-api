@@ -73,14 +73,14 @@ def create_workshops
 	# open csv and store as array
 	# note: columns in CSV should not be duplicate. EL1 / EL2 / EL3 is okay
 	plaza_schedule = get_plaza_schedule
-	plaza_schedule = [plaza_schedule[1]]  # remove later
+	plaza_schedule = [plaza_schedule[0]]  # remove later
 
 	# create events
 	plaza_schedule.each do |teacher_schedule|
 		# store teacher and create array of events
 		current_teacher = teacher_schedule["Name"]
 		teacher_events = get_teacher_events(teacher_schedule)
-		teacher_events = [teacher_events[1]]  # remove later
+		teacher_events = [teacher_events[0]]  # remove later
 		puts "**************************************************************"
 		puts "Creating events for #{current_teacher}..."
 
@@ -90,19 +90,33 @@ def create_workshops
 
 			# copy master event / store event id
 			copied_event = copy_event(master_event_id, current_teacher, event)
-			event_id = copied_event["id"]
+			parent_event_id = copied_event["id"]
 			puts "Created event: #{event[:type].gsub("_", " ")} with #{current_teacher} #{event[:day]} at #{event[:start_time]}"
-			puts "Event ID: #{event_id}"
+			puts "Event ID: #{parent_event_id}"
 
 			# update details of new copy
 			update_event_details(copied_event, current_teacher)
 
 			# schedule series using day, time, and parent event id (figure out start date from day)
-			schedule_series(event_id, event[:start_time], event[:start_date], event[:day])
+			schedule_series(parent_event_id, event[:start_time], event[:start_date], event[:day])
 
-			# get ticket class ids for parent event. Update sales_end_relative to end_time / offset 60
-			# delete holiday events from series events
-			# publish event
+			# delete events from series events
+			created_events = get_events_by_series(parent_event_id)
+			events_to_delete = []
+
+			created_events.each do |event|
+				events_to_delete.push(event) if HOLIDAYS.include?(event[:date])
+			end
+
+			if events_to_delete.length
+				events_to_delete.each do |event|
+					delete_event(event[:id], event[:date])
+				end
+			end
+			
+			# publish series event
+
+			# test full csv
 		end
 	end
 end
@@ -152,11 +166,11 @@ def copy_event(master_event_id, current_teacher, event)
 	response_body
 end
 
-def delete_event(event_id)
+def delete_event(event_id, event_date=nil)
 	url = "https://www.eventbriteapi.com/v3/events/#{event_id}/"
 	response_body = get_response_body(url, "delete")
-	raise StandardError.new("There was an error deleting the event") if !response_body
-	puts "Deleted Event with ID #{event_id}"
+	raise StandardError.new("There was an error deleting an event") if !response_body
+	puts "Deleted Event on #{event_date} with ID #{event_id}"
 end
 
 def update_event_details(event, teacher_name)
@@ -175,8 +189,21 @@ def schedule_series(id, start_time, start_date, day)
 	body = get_schedule_series_body(occurrence_duration, recurrence_rule).to_json
 	response_body = get_response_body(url, "post", body)
 	raise StandardError.new("There was an error scheduling the event series") if !response_body
-	puts "SCHEDULE EVENT SERIES"
-	puts response_body	
+end
+
+def get_events_by_series(id)
+	url = "https://www.eventbriteapi.com/v3/series/#{id}/events/"
+	response_body = get_response_body(url, "get")
+	raise StandardError.new("There was an error retrieving the series events") if !response_body
+	formatted_series_events(response_body["events"])
+end
+
+def formatted_series_events(events)
+	formatted_events = []
+	events.each do |event|
+		formatted_events.push(id: event["id"], date: event["start"]["local"].split("T")[0])
+	end
+	formatted_events
 end
 
 def get_occurrence_duration(time)
@@ -202,7 +229,7 @@ def get_response_body(uri_string, type, body=nil)
 	uri = URI.parse(uri_string)
 	http = Net::HTTP.new(uri.host, uri.port)
 	http.use_ssl = true
-	request = type == "delete" ? Net::HTTP::Delete.new(uri.request_uri) : Net::HTTP::Post.new(uri.request_uri)
+	request = get_request(type, uri)
   	request["Authorization"] = "Bearer #{bearer_token}"
   	if body
   		request["Content-Type"] = "application/json"
@@ -210,6 +237,17 @@ def get_response_body(uri_string, type, body=nil)
   	end
   	response = http.request(request)
 	response.is_a?(Net::HTTPSuccess) ? JSON.parse(response.body) : nil
+end
+
+def get_request(type, uri)
+	case type
+	when "delete"
+		Net::HTTP::Delete.new(uri.request_uri)
+	when "post"
+		Net::HTTP::Post.new(uri.request_uri)
+	else
+		Net::HTTP::Get.new(uri.request_uri)
+	end	
 end
 
 def get_event_update_body(event)
