@@ -73,16 +73,17 @@ def create_workshops
 	# open csv and store as array
 	# note: columns in CSV should not be duplicate. EL1 / EL2 / EL3 is okay
 	plaza_schedule = get_plaza_schedule
-	plaza_schedule = [plaza_schedule[0]]  # remove later
+	# plaza_schedule = [plaza_schedule[1]]  # to test one event
 
 	# create events
 	plaza_schedule.each do |teacher_schedule|
 		# store teacher and create array of events
 		current_teacher = teacher_schedule["Name"]
 		teacher_events = get_teacher_events(teacher_schedule)
-		teacher_events = [teacher_events[0]]  # remove later
+		# teacher_events = [teacher_events[2]]  # to test one event
 		puts "**************************************************************"
 		puts "Creating events for #{current_teacher}..."
+		puts "**************************************************************"
 
 		teacher_events.each do |event|
 			# find appropriate master event
@@ -104,26 +105,26 @@ def create_workshops
 			created_events = get_events_by_series(parent_event_id)
 			events_to_delete = []
 
-			created_events.each do |event|
-				events_to_delete.push(event) if HOLIDAYS.include?(event[:date])
+			created_events.each do |e|
+				events_to_delete.push(e) if HOLIDAYS.include?(e[:date])
 			end
 
 			if events_to_delete.length
-				events_to_delete.each do |event|
-					delete_event(event[:id], event[:date])
+				events_to_delete.each do |e|
+					delete_event(e[:id], e[:date])
 				end
 			end
 			
 			# publish series event
-
-			# test full csv
+			publish_event(parent_event_id)
+			puts "***Published event: #{event[:type].gsub("_", " ")} with #{current_teacher} #{event[:day]} at #{event[:start_time]}***"
 		end
 	end
 end
 
 def get_plaza_schedule
 	puts "**************************************************************"
-	puts "Creating Workshops from #{CSV_FILE_NAME}"
+	puts "Creating Events from #{CSV_FILE_NAME}"
 	schedule_array = CSV.open(CSV_FILE_NAME, headers: :first_row).map(&:to_h)
 	schedule_array.each do |teacher_schedule| 
 		teacher_schedule.delete_if { |k, v| v.nil? }
@@ -170,7 +171,7 @@ def delete_event(event_id, event_date=nil)
 	url = "https://www.eventbriteapi.com/v3/events/#{event_id}/"
 	response_body = get_response_body(url, "delete")
 	raise StandardError.new("There was an error deleting an event") if !response_body
-	puts "Deleted Event on #{event_date} with ID #{event_id}"
+	puts "Deleted holiday event on #{event_date} with ID #{event_id}"
 end
 
 def update_event_details(event, teacher_name)
@@ -189,6 +190,12 @@ def schedule_series(id, start_time, start_date, day)
 	body = get_schedule_series_body(occurrence_duration, recurrence_rule).to_json
 	response_body = get_response_body(url, "post", body)
 	raise StandardError.new("There was an error scheduling the event series") if !response_body
+end
+
+def publish_event(id)
+	url = "https://www.eventbriteapi.com/v3/events/#{id}/publish/"
+	response_body = get_response_body(url, "post")
+	raise StandardError.new("There was an error publishing an event") if !response_body
 end
 
 def get_events_by_series(id)
