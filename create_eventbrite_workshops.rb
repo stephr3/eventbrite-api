@@ -73,14 +73,16 @@ def create_workshops
 	# open csv and store as array
 	# note: columns in CSV should not be duplicate. EL1 / EL2 / EL3 is okay
 	plaza_schedule = get_plaza_schedule
-	# plaza_schedule = [plaza_schedule[1]]  # to test one event
+	# plaza_schedule = [plaza_schedule[0]]  # to test one event
 
 	# create events
 	plaza_schedule.each do |teacher_schedule|
 		# store teacher and create array of events
 		current_teacher = teacher_schedule["Name"]
+		zoom_id = teacher_schedule["ZoomMeetingID"]
+
 		teacher_events = get_teacher_events(teacher_schedule)
-		# teacher_events = [teacher_events[2]]  # to test one event
+		# teacher_events = [teacher_events[0]]  # to test one event
 		puts "**************************************************************"
 		puts "Creating events for #{current_teacher}..."
 		puts "**************************************************************"
@@ -97,6 +99,9 @@ def create_workshops
 
 			# update details of new copy
 			update_event_details(copied_event, current_teacher)
+
+			# update confirmation email of new copy (for inserting Zoom IDs)
+			update_confirmation_email(parent_event_id, zoom_id)
 
 			# schedule series using day, time, and parent event id (figure out start date from day)
 			schedule_series(parent_event_id, event[:start_time], event[:start_date], event[:day])
@@ -120,6 +125,8 @@ def create_workshops
 			puts "***Published event: #{event[:type].gsub("_", " ")} with #{current_teacher} #{event[:day]} at #{event[:start_time]}***"
 		end
 	end
+
+	puts "####### Completed Events for #{plaza_schedule.length.to_s} Teachers #######"
 end
 
 def get_plaza_schedule
@@ -134,7 +141,12 @@ end
 
 def get_teacher_events(teacher_schedule)
 	teacher_events = []
-	teacher_schedule = teacher_schedule.tap { |hs| hs.shift }
+	# remove name and zoom id columns
+	teacher_schedule = teacher_schedule.tap do |hs|
+		hs.delete("Name")
+		hs.delete("ZoomMeetingID")
+	end
+
 	teacher_schedule.each do |k,v|
 		event_type = k.to_s.tr("0-9", "")
 		event = formatted_event_hash(event_type, v)
@@ -179,6 +191,13 @@ def update_event_details(event, teacher_name)
 	event["description"]["text"] = event["description"]["text"].gsub("FIRST_NAME", teacher_name)
 	event["description"]["html"] = event["description"]["html"].gsub("FIRST_NAME", teacher_name)
 	body = get_event_update_body(event).to_json
+	response_body = get_response_body(url, "post", body)
+	raise StandardError.new("There was an error updating the event details") if !response_body
+end
+
+def update_confirmation_email(event_id, zoom_id)
+	url = "https://www.eventbriteapi.com/v3/events/#{event_id}/ticket_buyer_settings/"
+	body = get_confirmation_update_body(zoom_id).to_json
 	response_body = get_response_body(url, "post", body)
 	raise StandardError.new("There was an error updating the event details") if !response_body
 end
@@ -289,6 +308,21 @@ def get_event_update_body(event)
 	    "show_seatmap_thumbnail": event["show_seatmap_thumbnail"],
 	    "show_colors_in_seatmap_thumbnail": event["show_colors_in_seatmap_thumbnail"]
 	  }
+	}
+end
+
+def get_confirmation_update_body(zoom_id)
+	{
+  		"ticket_buyer_settings": {
+		    "confirmation_message": {
+		        "html": "Your reservation is complete. Thank you!\n\nPlease prepare for your English Lounge session by visiting the GTF's page on the GTI website:\nhttps://tiugti.com/teachers/\n\nBring some new vocabulary words and prepare some questions to ask in English Lounge.\n\nYou will meet your teacher with the following Zoom ID:  #{zoom_id}"
+		    },
+		    "instructions": {
+        		"html": "Your reservation is complete. Thank you!<BR><BR>Please prepare for your English Lounge session by visiting the GTF's page on the GTI website:<BR>https://tiugti.com/teachers/<BR><BR>Bring some new vocabulary words and prepare some questions to ask in English Lounge.<BR><BR>You will meet your teacher with the following Zoom ID:  #{zoom_id}"
+        	},
+    		"refund_request_enabled": true,
+    		"redirect_url": nil
+  		}
 	}
 end
 
