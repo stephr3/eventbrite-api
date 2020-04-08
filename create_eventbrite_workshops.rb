@@ -315,10 +315,10 @@ def get_confirmation_update_body(zoom_id)
 	{
   		"ticket_buyer_settings": {
 		    "confirmation_message": {
-		        "html": "Your reservation is complete. Thank you!\n\nPlease prepare for your English Lounge session by visiting the GTF's page on the GTI website:\nhttps://tiugti.com/teachers/\n\nBring some new vocabulary words and prepare some questions to ask in English Lounge.\n\nYou will meet your teacher with the following Zoom ID:  #{zoom_id}"
+		        "html": "Your reservation is complete. Thank you!<BR><BR>Please prepare for your English Lounge session by visiting the GTF's page on the GTI website:<BR>https://tiugti.com/teachers/<BR><BR>Bring some new vocabulary words and prepare some questions to ask in English Lounge.<BR><BR>You will meet your teacher at the following Zoom link:  <a href='https://zoom.us/j/#{zoom_id}'>https://zoom.us/j/#{zoom_id}</a>"
 		    },
 		    "instructions": {
-        		"html": "Your reservation is complete. Thank you!<BR><BR>Please prepare for your English Lounge session by visiting the GTF's page on the GTI website:<BR>https://tiugti.com/teachers/<BR><BR>Bring some new vocabulary words and prepare some questions to ask in English Lounge.<BR><BR>You will meet your teacher with the following Zoom ID:  #{zoom_id}"
+        		"html": "Your reservation is complete. Thank you!<BR><BR>Please prepare for your English Lounge session by visiting the GTF's page on the GTI website:<BR>https://tiugti.com/teachers/<BR><BR>Bring some new vocabulary words and prepare some questions to ask in English Lounge.<BR><BR>You will meet your teacher at the following Zoom link:  <a href='https://zoom.us/j/#{zoom_id}'>https://zoom.us/j/#{zoom_id}</a>"
         	},
     		"refund_request_enabled": true,
     		"redirect_url": nil
