@@ -9,45 +9,63 @@ require 'csv'
 ####################################################################################
 # yyyy-mm-dd format
 
-START_DATES = {
-					Monday: "2020-04-06",
-					Tuesday: "2020-04-07",
-					Wednesday: "2020-04-08",
-					Thursday: "2020-04-02",
-					Friday: "2020-04-03"
+START_DATES_EL = {
+					Monday: "2020-05-11",
+					Tuesday: "2020-05-12",
+					Wednesday: "2020-05-13",
+					Thursday: "2020-04-30",
+					Friday: "2020-05-01"
 
 			  }	
 
-HOLIDAYS = ["2020-05-04", "2020-05-05", "2020-05-06", "2020-06-05", "2020-07-16"]
+START_DATES_AA = {
+					Monday: "2020-05-11",
+					Tuesday: "2020-05-12",
+					Wednesday: "2020-05-13",
+					Thursday: "2020-05-07",
+					Friday: "2020-05-08"
+
+			  }			  
+
+HOLIDAYS = ["2020-05-04", "2020-05-05", "2020-05-06", "2020-07-23", "2020-07-24"]
 
 CSV_FILE_NAME = "Plaza_Schedule_Spring_2020.csv"
 
 
 MASTER_WORKSHOP_IDS = 
 	{
-		"Academic_Advising_10:25": "99794506054",
-		"Academic_Advising_11:35": "99794626414",
-		"Academic_Advising_10:50": "99514324022",
-		"Academic_Advising_13:10": "99794211172",
-		"Academic_Advising_14:50": "99794339556",
-		"Academic_Advising_16:30": "99794383688",
-		"English_Lounge_10:25": "99795671540",
-		"English_Lounge_11:35": "99795866122",
-		"English_Lounge_10:50": "99795049680",
-		"English_Lounge_13:10": "99514757318",
+		"Academic_Advising_10:25": "102335016790",
+		"Academic_Advising_11:35": "102335080982",
+		"Academic_Advising_10:50": "102333221420",
+		"Academic_Advising_13:10": "102334641668",
+		"Academic_Advising_14:50": "102334774064",
+		"Academic_Advising_16:30": "102334842268",
+		"English_Lounge_10:25": "102332457134",
+		"English_Lounge_11:35": "102332523332",
+		"English_Lounge_10:50": "102331919526",
+		"English_Lounge_13:10": "102332047910",
 		"English_Lounge_14:50": "99795188094",
-		"English_Lounge_16:30": "99795334532"
+		"English_Lounge_16:30": "102332140186"
 	}
 
 # How many times each day occurs in the semester, *including* holidays
-FREQ_COUNTS = 
+FREQ_COUNTS_EL = 
 	{
-		Monday: "15",
-		Tuesday: "15",
-		Wednesday: "15",
-		Thursday: "16",
-		Friday: "16"
+		Monday: "12",
+		Tuesday: "12",
+		Wednesday: "12",
+		Thursday: "14",
+		Friday: "14"
 	}
+
+FREQ_COUNTS_AA = 
+	{
+		Monday: "13",
+		Tuesday: "13",
+		Wednesday: "12",
+		Thursday: "13",
+		Friday: "13"
+	}	
 
 ####################################################################################
 
@@ -104,7 +122,7 @@ def create_workshops
 			update_confirmation_email(parent_event_id, zoom_id)
 
 			# schedule series using day, time, and parent event id (figure out start date from day)
-			schedule_series(parent_event_id, event[:start_time], event[:start_date], event[:day])
+			schedule_series(parent_event_id, event[:start_time], event[:start_date], event[:day], event[:type])
 
 			# delete events from series events
 			created_events = get_events_by_series(parent_event_id)
@@ -163,8 +181,8 @@ def formatted_event_hash(event_type, value)
 	formatted_event_type = event_type == "EL" ? "English_Lounge" : "Academic_Advising"
 	start_time = times_array[0]
 	end_time = times_array[1] 
-	start_date = get_iso_datetime(day, start_time)
-	end_date = get_iso_datetime(day, end_time)
+	start_date = get_iso_datetime(day, start_time, event_type)
+	end_date = get_iso_datetime(day, end_time, event_type)
 
 	{type: formatted_event_type, day: day, start_time: start_time, start_date: start_date, end_date: end_date}
 end
@@ -202,10 +220,10 @@ def update_confirmation_email(event_id, zoom_id)
 	raise StandardError.new("There was an error updating the event details") if !response_body
 end
 
-def schedule_series(id, start_time, start_date, day)
+def schedule_series(id, start_time, start_date, day, formatted_event_type)
 	url = "https://www.eventbriteapi.com/v3/events/#{id}/schedules/"
 	occurrence_duration = get_occurrence_duration(start_time)
-	recurrence_rule = get_recurrence_rule(start_date, day)
+	recurrence_rule = get_recurrence_rule(start_date, day, formatted_event_type)
 	body = get_schedule_series_body(occurrence_duration, recurrence_rule).to_json
 	response_body = get_response_body(url, "post", body)
 	raise StandardError.new("There was an error scheduling the event series") if !response_body
@@ -236,8 +254,9 @@ def get_occurrence_duration(time)
 	["10:25", "11:35"].include?(time) ? 2700 : 5400
 end
 
-def get_recurrence_rule(date, day)
-	count = FREQ_COUNTS[day.to_sym]
+def get_recurrence_rule(date, day, type)
+	freq_count = type == "English_Lounge" ? FREQ_COUNTS_EL : FREQ_COUNTS_AA
+	count = freq_count[day.to_sym]
 	formatted_date = date.gsub("-","").gsub(":","")
 	"DTSTART:#{formatted_date}\nRRULE:FREQ=WEEKLY;COUNT=#{count}"
 end
@@ -315,10 +334,18 @@ def get_confirmation_update_body(zoom_id)
 	{
   		"ticket_buyer_settings": {
 		    "confirmation_message": {
-		        "html": "Your reservation is complete. Thank you!<BR><BR>Please prepare for your English Lounge session by visiting the GTF's page on the GTI website:<BR>https://tiugti.com/teachers/<BR><BR>Bring some new vocabulary words and prepare some questions to ask in English Lounge.<BR><BR>You will meet your teacher at the following Zoom link:  <a href='https://zoom.us/j/#{zoom_id}'>https://zoom.us/j/#{zoom_id}</a>"
+		        "html": "You will meet your teacher at the following Zoom link:  <a href='https://zoom.us/j/#{zoom_id}'>https://zoom.us/j/#{zoom_id}</a>
+		        		<BR><BR> Your reservation is complete. Thank you!
+		        		<BR><BR> Please prepare for your English Lounge session by visiting the GTF's page on the GTI website:
+		        		<BR> https://tiugti.com/teachers/
+		        		<BR><BR> Bring some new vocabulary words and prepare some questions to ask in English Lounge."
 		    },
 		    "instructions": {
-        		"html": "Your reservation is complete. Thank you!<BR><BR>Please prepare for your English Lounge session by visiting the GTF's page on the GTI website:<BR>https://tiugti.com/teachers/<BR><BR>Bring some new vocabulary words and prepare some questions to ask in English Lounge.<BR><BR>You will meet your teacher at the following Zoom link:  <a href='https://zoom.us/j/#{zoom_id}'>https://zoom.us/j/#{zoom_id}</a>"
+		        "html": "You will meet your teacher at the following Zoom link:  <a href='https://zoom.us/j/#{zoom_id}'>https://zoom.us/j/#{zoom_id}</a>
+		        		<BR><BR> Your reservation is complete. Thank you!
+		        		<BR><BR> Please prepare for your English Lounge session by visiting the GTF's page on the GTI website:
+		        		<BR> https://tiugti.com/teachers/
+		        		<BR><BR> Bring some new vocabulary words and prepare some questions to ask in English Lounge."
         	},
     		"refund_request_enabled": true,
     		"redirect_url": nil
@@ -326,8 +353,9 @@ def get_confirmation_update_body(zoom_id)
 	}
 end
 
-def get_iso_datetime(day, time)
-	date = START_DATES[day.to_sym]
+def get_iso_datetime(day, time, type)
+	start_dates = type == "EL" ? START_DATES_EL : START_DATES_AA
+	date = start_dates[day.to_sym]
 	utc_time = JST_TO_UTC[time.to_sym]
 	"#{date}T#{utc_time}:00Z"	
 end
