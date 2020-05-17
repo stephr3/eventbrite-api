@@ -245,6 +245,24 @@ def academic_advising_data(event, attendee)
 	}	
 end
 
+def pep_data(event, attendee)
+	{
+		"Event Name": event[:name], 
+		"First Name": attendee["profile"]["first_name"],
+		"Last Name": attendee["profile"]["last_name"],
+		"Email": attendee["profile"]["email"],
+		"Ticket Type": attendee["ticket_class_name"],
+		"Date Attending": event[:date],
+		"What is your year/position at TIU?": attendee["answers"][0]["answer"],
+		"What is your major/specialty at TIU?": attendee["answers"][1]["answer"],
+		"Why are you coming to English Lounge?": attendee["answers"][2]["answer"],
+		"Who teaches your CB class?": attendee["answers"][5]["answer"],
+		"Who teaches your EP class?": attendee["answers"][6]["answer"],
+		"Who teaches this class?": attendee["answers"][7]["answer"]
+
+	}
+end
+
 def open_csv(attendees)
 	file_name = "#{event_type_input}_#{Date.today.strftime("%m_%d_%Y")}.csv"
 	CSV.open(file_name, "wb") do |csv|
