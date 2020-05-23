@@ -115,6 +115,7 @@ AA_SERIES_IDS = [
 					103066159658,
 					103066534780
 				]
+
 PEP_SERIES_IDS = [
 					104744517672,
 					104745085370,
@@ -123,10 +124,12 @@ PEP_SERIES_IDS = [
 					104745723278
 				 ]
 
+PAW_SERIES_IDS = []
+
 def get_eventbrite_data_by_series
 	
 	if !correct_event_type_input
-		puts "Please input EL or AA. Example: $ruby get_eventbrite_data_by_series.rb EL"
+		puts "Please input EL, AA, PEP, or PAW. Example: $ruby get_eventbrite_data_by_series.rb EL"
 		return
 	end
 
@@ -145,12 +148,12 @@ def get_eventbrite_data_by_series
 end
 
 def get_event_list
-	series_ids_list = is_el ? EL_SERIES_IDS : AA_SERIES_IDS
+	series_ids_list = get_series_ids_list
 	total_event_series = series_ids_list.length
 	event_list = []
-
 	puts "TOTAL EVENT SERIES: " + total_event_series.to_s
 	puts "Step 1: Get completed events from each series..."
+
 	series_ids_list.each_with_index do |series_id, i|
 		event_list_uri = get_event_list_uri(series_id)
 		response_body = get_response_body(event_list_uri)
@@ -158,8 +161,20 @@ def get_event_list
 		event_list.push(response_body["events"])
 		puts (i + 1).to_s + " of " + total_event_series.to_s + " series complete" if (i + 1) % 5 == 0
 	end
-
 	event_list 
+end
+
+def get_series_ids_list
+	case event_type_input
+	when "EL"
+	  	EL_SERIES_IDS
+	when "AA"
+	  	AA_SERIES_IDS
+	when "PEP"
+		PEP_SERIES_IDS
+	else
+	  	PAW_SERIES_IDS
+	end
 end
 
 def get_formatted_events(event_list) 
@@ -194,17 +209,24 @@ end
 
 def get_formatted_attendees(event, attendees)
 	attendees_list = []
-
 	attendees.each do |attendee|
 		next if !attendee["checked_in"]
 		attendees_list.push(create_attendee(event, attendee))
 	end
-
 	attendees_list
 end
 
 def create_attendee(event, attendee)
-	is_el ? english_lounge_data(event, attendee) : academic_advising_data(event, attendee)
+	case event_type_input
+	when "EL"
+	  	english_lounge_data(event, attendee)
+	when "AA"
+	  	academic_advising_data(event, attendee)
+	when "PEP"
+		pep_data(event, attendee)
+	else
+	  	paw_data(event, attendee)
+	end	
 end
 
 def english_lounge_data(event, attendee)
@@ -263,6 +285,27 @@ def pep_data(event, attendee)
 	}
 end
 
+def paw_data(event, attendee)
+	{
+		"Event Name": event[:name], 
+		"First Name": attendee["profile"]["first_name"],
+		"Last Name": attendee["profile"]["last_name"],
+		"Email": attendee["profile"]["email"],
+		"Ticket Type": attendee["ticket_class_name"],
+		"Date Attending": event[:date],
+		"What is your year/position at TIU?": attendee["answers"][0]["answer"],
+		"What is your major/specialty at TIU?": attendee["answers"][1]["answer"],
+		"Why are you coming to Academic Advising?": attendee["answers"][2]["answer"],
+		"Who teaches your AC1 class?": attendee["answers"][5]["answer"],
+		"Who teaches your AC2 class?": attendee["answers"][6]["answer"],
+		"Who teaches your EC/BW class?": attendee["answers"][7]["answer"],
+		"Who teaches your CC class?": attendee["answers"][8]["answer"],
+		"Who teaches your CB/BS class?": attendee["answers"][9]["answer"],
+		"Who teaches this class?": attendee["answers"][10]["answer"],
+		"What assignment, project, or topic are you bringing to Academic Advising?": attendee["answers"][3]["answer"]
+	}	
+end
+
 def open_csv(attendees)
 	file_name = "#{event_type_input}_#{Date.today.strftime("%m_%d_%Y")}.csv"
 	CSV.open(file_name, "wb") do |csv|
@@ -285,7 +328,7 @@ def get_response_body(uri_string)
 end
 
 def correct_event_type_input
-	event_type_input && ["EL", "AA"].include?(event_type_input)
+	event_type_input && ["EL", "AA", "PEP", "PAW"].include?(event_type_input)
 end
 
 def event_type_input
@@ -298,10 +341,6 @@ end
 
 def bearer_token
 	ENV["EVENTBRITE_BEARER_TOKEN"]
-end
-
-def is_el
-	event_type_input == "EL"
 end
 
 def get_event_list_uri(series_id)

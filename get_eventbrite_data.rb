@@ -4,6 +4,8 @@ require 'json'
 require 'date'
 require 'csv'
 
+# Not used - use get_eventbrite_data_by_series instead
+
 def get_eventbrite_data
 	
 	if !correct_event_type_input
@@ -52,13 +54,17 @@ end
 
 def get_formatted_events(event_list) 
 	ids_list = []
-
+	semester_start_date = Date.new(2020, 04, 29)
+	today = Date.today
 	event_list.each do |event_group|
 		event_group.each do |event|
-			ids_list.push({"name": event["name"]["text"], "id": event["id"], "date": Date.parse(event["start"]["local"]).to_s})
+			event_date = Date.parse(event["start"]["local"])
+			if event_date > semester_start_date && event_date < today
+				ids_list.push({"name": event["name"]["text"], "id": event["id"], "date": event_date.to_s})
+			end
 		end
 	end
-
+	puts "Total of " + ids_list.length + " events completed before " + today.to_s
 	ids_list
 end
 
@@ -199,9 +205,9 @@ end
 
 def get_event_list_uri
 	if teacher_name
-		"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type} with #{teacher_name}"
+		"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&status=completed&time_filter=current_future&name_filter=#{event_type} with #{teacher_name}"
 	else
-		"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&name_filter=#{event_type}"
+		"https://www.eventbriteapi.com/v3/organizations/#{organization_id}/events/?page_size=200&status=completed&time_filter=current_future&name_filter=#{event_type}"
 	end
 end
 
