@@ -124,7 +124,13 @@ PEP_SERIES_IDS = [
 					104745723278
 				 ]
 
-PAW_SERIES_IDS = []
+PAW_SERIES_IDS = [
+					105764470378,
+					105768795314,
+					105769116274,
+					105770155382,
+					105770422180
+				 ]
 
 def get_eventbrite_data_by_series
 	
@@ -143,8 +149,6 @@ def get_eventbrite_data_by_series
 	attendees = get_attendees(formatted_events)
 
 	open_csv(attendees.flatten)
-
-	# make into executable file...
 end
 
 def get_event_list
@@ -172,7 +176,7 @@ def get_series_ids_list
 	  	AA_SERIES_IDS
 	when "PEP"
 		PEP_SERIES_IDS
-	else
+	when "PAW"
 	  	PAW_SERIES_IDS
 	end
 end
@@ -224,7 +228,7 @@ def create_attendee(event, attendee)
 	  	academic_advising_data(event, attendee)
 	when "PEP"
 		pep_data(event, attendee)
-	else
+	when "PAW"
 	  	paw_data(event, attendee)
 	end	
 end
@@ -244,6 +248,24 @@ def english_lounge_data(event, attendee)
 		"Who teaches your EP class?": attendee["answers"][5]["answer"],
 		"Who teaches this class?": attendee["answers"][6]["answer"]
 	}	
+end
+
+def pep_data(event, attendee)
+	{
+		"Event Name": event[:name], 
+		"First Name": attendee["profile"]["first_name"],
+		"Last Name": attendee["profile"]["last_name"],
+		"Email": attendee["profile"]["email"],
+		"Ticket Type": attendee["ticket_class_name"],
+		"Date Attending": event[:date],
+		"What is your year/position at TIU?": attendee["answers"][0]["answer"],
+		"What is your major/specialty at TIU?": attendee["answers"][1]["answer"],
+		"Why are you coming to English Lounge?": attendee["answers"][2]["answer"],
+		"Who teaches your CB class?": attendee["answers"][5]["answer"],
+		"Who teaches your EP class?": attendee["answers"][6]["answer"],
+		"Who teaches this class?": attendee["answers"][7]["answer"]
+
+	}
 end
 
 def academic_advising_data(event, attendee)
@@ -267,24 +289,6 @@ def academic_advising_data(event, attendee)
 	}	
 end
 
-def pep_data(event, attendee)
-	{
-		"Event Name": event[:name], 
-		"First Name": attendee["profile"]["first_name"],
-		"Last Name": attendee["profile"]["last_name"],
-		"Email": attendee["profile"]["email"],
-		"Ticket Type": attendee["ticket_class_name"],
-		"Date Attending": event[:date],
-		"What is your year/position at TIU?": attendee["answers"][0]["answer"],
-		"What is your major/specialty at TIU?": attendee["answers"][1]["answer"],
-		"Why are you coming to English Lounge?": attendee["answers"][2]["answer"],
-		"Who teaches your CB class?": attendee["answers"][5]["answer"],
-		"Who teaches your EP class?": attendee["answers"][6]["answer"],
-		"Who teaches this class?": attendee["answers"][7]["answer"]
-
-	}
-end
-
 def paw_data(event, attendee)
 	{
 		"Event Name": event[:name], 
@@ -298,10 +302,10 @@ def paw_data(event, attendee)
 		"Why are you coming to Academic Advising?": attendee["answers"][2]["answer"],
 		"Who teaches your AC1 class?": attendee["answers"][5]["answer"],
 		"Who teaches your AC2 class?": attendee["answers"][6]["answer"],
-		"Who teaches your EC/BW class?": attendee["answers"][7]["answer"],
-		"Who teaches your CC class?": attendee["answers"][8]["answer"],
-		"Who teaches your CB/BS class?": attendee["answers"][9]["answer"],
-		"Who teaches this class?": attendee["answers"][10]["answer"],
+		"Who teaches your EC/BW class?": "",
+		"Who teaches your CC class?": "",
+		"Who teaches your CB/BS class?": "",
+		"Who teaches this class?": attendee["answers"][7]["answer"],
 		"What assignment, project, or topic are you bringing to Academic Advising?": attendee["answers"][3]["answer"]
 	}	
 end
