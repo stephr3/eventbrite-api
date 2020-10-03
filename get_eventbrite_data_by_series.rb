@@ -64,7 +64,7 @@ PAW_SERIES_IDS = [
 					121482201535,
 					121663443635,
 					121660892003,
-					1216612811677
+					121661281167
 				 ]
 
 def get_eventbrite_data_by_series
