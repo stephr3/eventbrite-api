@@ -4,9 +4,6 @@ require 'json'
 require 'date'
 require 'csv'
 
-# TO DO: test on postman, make sure csv headings match up
-# Run - upload to drive
-# Email peeps about updating teachers' names
 # Update each term (can get IDs from URLS list)
 EL_SERIES_IDS = [
 					119983284233,
@@ -126,12 +123,12 @@ def get_formatted_events(event_list)
 	event_list.each do |event_group|
 		event_group.each do |event|
 			event_date = Date.parse(event["start"]["local"])
-			if event_date > semester_start_date && event_date < today
+			if event_date >= semester_start_date && event_date <= today
 				ids_list.push({"name": event["name"]["text"], "id": event["id"], "date": event_date.to_s})
 			end
 		end
 	end
-	puts "Total of " + ids_list.length.to_s + " events completed before " + today.to_s
+	puts "Total of " + ids_list.length.to_s + " events completed up to and including " + today.to_s
 	ids_list
 end
 
